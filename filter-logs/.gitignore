@@ -1,0 +1,3 @@
+*
+!.gitignore
+!filter-cloudwatch-logs.py
