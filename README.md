@@ -27,6 +27,8 @@ Doing so will make the request faster, since it only has to check the log stream
 If you don't know the streams that need including, or you want to be sure you get all logs within that timestamp, it should be fine to continue without these, but be aware the request will take longer as a result.
 (If it's running for 10+ minutes for 150k log events across a period of a day, then something might be up.)
 
+Note that **you must be authenticated with AWS for this script to run**.
+
 The script writes its output to a file named `aws_logs.txt` in the current directory.
 
 ### filter-logs
