@@ -14,7 +14,7 @@ There is no context in this repo to keep it as generic as possible.
 
 This script can be used to download logs from AWS CloudWatch.
 It assumes the logs in question are inside a log group called "matomo".
-Pass it two millisecond timestamps and it will download any errored requests from Nginx between those timestamps.
+Pass it two millisecond-timestamps and it will download any errored requests from Nginx between those timestamps.
 For example, to get logs from between 9:32 and 9:49 on 2019-01-01, pass in `1546507920000` and `1546508999999`:
 
 ```
