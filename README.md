@@ -49,13 +49,15 @@ Note that if that output file already exists, the transformed output will be app
 This is essentially a Dockerfile used to define an environment with Python 2 to run the Matomo log analytics script.
 A fork is being used to handle `X-Forwarded-For` headers as given by AWS Application ELBs.
 The command itself has to be run manually once inside the docker image, as token authentication using Matomo hasn't worked in testing thus far, so authentication credentials need to be supplied directly.
-An example workflow might be something like this:
+
+There is a bash script suppied to simplify building and running the docker container.
+It tags the image `matomo-replay-events` by default.
+An example workflow using this script might be something like this:
 
 ```
 mv download-logs/aws_logs.txt.ndjson replay-events/access.log
 cd replay-events
-docker build -t matomo-replay-events .
-docker run --rm -it matomo-replay-events
+./replay.sh
 # inside docker container:
 python -u /log-analytics/import_logs.py \
     --url=https://your.matomo.url/ \

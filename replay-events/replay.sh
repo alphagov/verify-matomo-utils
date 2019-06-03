@@ -5,7 +5,7 @@ if [ ! -f "access.log" ]; then
     exit 1
 fi
 
-docker build -t matomo-import .
+docker build -t matomo-replay-events .
 
 cat << 'EOF'
 In the container, you will want to run a command like:
@@ -25,4 +25,4 @@ EOF
 
 docker run --rm \
     --mount type=bind,source="$(pwd)"/access.log,target=/access.log \
-    -it matomo-import
+    -it matomo-replay-events
