@@ -49,9 +49,11 @@ def append_to_file(file, thing):
     file.write('\n')
 
 
-def append_many(path, iterable):
+def append_many(path, iterable, getter=None):
     with open(path, 'a', encoding='utf8') as file:
         for thing in iterable:
+            if getter:
+                thing = getter(thing)
             append_to_file(file, thing)
 
 
@@ -112,8 +114,14 @@ def main():
     for event in aws_entries['events']:
         request_details = parse(event, stats)
         if should_include(request_details, stats):
-            filtered_messages.append(request_details)
-    append_many(output_path, filtered_messages)
+            filtered_messages.append({
+                'parsed_message': request_details,
+                'event': event
+            })
+    # sort messages by timestamp, earliest first
+    # see the requirements on https://matomo.org/docs/log-analytics-tool-how-to/
+    filtered_messages.sort(key=(lambda m: m['event']['timestamp']))
+    append_many(output_path, filtered_messages, getter=(lambda m: m['parsed_message']))
     print(stats.report())
 
 
