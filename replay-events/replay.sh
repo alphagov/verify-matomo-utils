@@ -23,4 +23,6 @@ python -u /log-analytics/import_logs.py \
 Remember to substitute in your Matomo URL and login credentials.
 EOF
 
-docker run --rm -it matomo-import
+docker run --rm \
+    --mount type=bind,source="$(pwd)"/access.log,target=/access.log \
+    -it matomo-import
