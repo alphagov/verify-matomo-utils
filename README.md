@@ -68,5 +68,6 @@ export MATOMO_PASSWORD=matomo_password
 ```
 
 Remember to move or copy your (ndjson) access log into the directory prior to building.
-(You can specify a different filename by changing the Dockerfile.)
+(You can specify a different filename by changing the bind mount `source` passed to the `docker run` command in
+`replay.sh`.)
 Best practice will also advise you not set the password variable through the command line.
