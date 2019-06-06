@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 numberregex='^[0-9]+$'
 if ! [[ $1 =~ ${numberregex} && $2 =~ ${numberregex} ]]; then
     echo "You must specify a start and end time in milliseconds."
@@ -17,6 +19,4 @@ read REPLY && if [[ $REPLY =~ ^[Yy]$ ]]; then
         --log-group-name "matomo" \
         --filter-pattern='{ $.status = 5* }' \
         > aws_logs.txt
-    exit $?
 fi
-exit 1
