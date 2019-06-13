@@ -7,9 +7,9 @@ if [ -z "${MATOMO_URL}" ]; then
     echo "This is done by setting the \"MATOMO_URL\" variable."
     exit 1
 fi
-if [ -z "${MATOMO_LOGIN}" ] || [ -z "${MATOMO_PASSWORD}" ]; then
-    echo "Please ensure you specify credentials for Matomo."
-    echo "This is done by setting the \"MATOMO_LOGIN\" and \"MATOMO_PASSWORD\" variables."
+if [ -z "${MATOMO_TOKEN}" ]; then
+    echo "Please ensure you specify an access token for Matomo."
+    echo "This can be provided through the \"MATOMO_TOKEN\" variable."
     exit 1
 fi
 
@@ -23,6 +23,5 @@ docker build -t matomo-replay-events .
 docker run --rm \
     --mount type=bind,source="$(pwd)"/access.log,target=/access.log \
     -e MATOMO_URL \
-    -e MATOMO_LOGIN \
-    -e MATOMO_PASSWORD \
+    -e MATOMO_TOKEN \
     -it matomo-replay-events
