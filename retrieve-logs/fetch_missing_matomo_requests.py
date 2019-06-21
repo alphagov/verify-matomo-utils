@@ -1,32 +1,45 @@
 from datetime import datetime, timedelta, timezone
 import os
 import boto3
+import logging
 import time
 from _decimal import Decimal
 
+LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
 START_DATE = 'START_DATE'
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
 
+_logger = None
 
-def print_unset_env_variable_error_and_exit(environment_variable):
-    print(environment_variable, ' environment variable is not set.')
+
+def get_logger():
+    global _logger
+    if not _logger:
+        logging.basicConfig(level=logging.INFO)
+        _logger = logging.getLogger(__name__)
+        _logger.setLevel(os.getenv(LOG_LEVEL, logging.INFO))
+    return _logger
+
+
+def log_unset_env_variable_error_and_exit(environment_variable):
+    get_logger().error(f'{environment_variable} environment variable is not set.')
     exit(1)
 
 
 def validate_environment_variables():
     if os.getenv(START_DATE) is None:
-        print_unset_env_variable_error_and_exit(START_DATE)
+        log_unset_env_variable_error_and_exit(START_DATE)
     if os.getenv(NUM_OF_DAYS) is None:
-        print_unset_env_variable_error_and_exit(NUM_OF_DAYS)
+        log_unset_env_variable_error_and_exit(NUM_OF_DAYS)
 
 
 def get_start_date():
     try:
         return datetime.strptime(os.getenv(START_DATE), DATE_FORMAT)
     except ValueError:
-        print(f'START_DATE has an invalid format. Please follow the format: "{DATE_FORMAT}".')
+        get_logger().error(f'START_DATE has an invalid format. Please follow the format: "{DATE_FORMAT}".')
         exit(1)
 
 
@@ -34,7 +47,7 @@ def get_number_of_days():
     try:
         return int(os.getenv(NUM_OF_DAYS))
     except ValueError:
-        print('NUM_OF_DAYS has an invalid format. Please specify an integer.')
+        get_logger().error('NUM_OF_DAYS has an invalid format. Please specify an integer.')
         exit(1)
 
 
