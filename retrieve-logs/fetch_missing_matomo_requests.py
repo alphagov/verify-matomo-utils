@@ -9,7 +9,7 @@ START_DATE = 'START_DATE'
 
 
 def print_unset_env_variable_error_and_exit(environment_variable):
-    print(environment_variable, " environment variable is not set.")
+    print(environment_variable, ' environment variable is not set.')
     exit(1)
 
 
@@ -24,7 +24,7 @@ def get_start_date():
     try:
         return datetime.strptime(os.getenv(START_DATE), '%Y-%m-%dT%H:%M:%S%z')
     except ValueError:
-        print("START_DATE has an invalid date and time format. It should be in %Y-%m-%dT%H:%M:%S%z")
+        print('START_DATE has an invalid date and time format. It should be in %Y-%m-%dT%H:%M:%S%z')
         exit(1)
 
 
@@ -32,7 +32,7 @@ def get_number_of_days():
     try:
         return int(os.getenv(NUM_OF_DAYS))
     except ValueError:
-        print("NUM_OF_DAYS has an invalid format. It should be in integers only")
+        print('NUM_OF_DAYS has an invalid format. It should be in integers only')
         exit(1)
 
 
