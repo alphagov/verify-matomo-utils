@@ -11,6 +11,7 @@ START_DATE = 'START_DATE'
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
 MAX_REQUESTS = 10_000
+PERIOD_WIDTH_IN_SECONDS = 60 * 5
 
 _logger = None
 
@@ -111,36 +112,17 @@ if __name__ == '__main__':
 
     start_date = get_start_date()
     num_of_days = get_number_of_days()
-    end_date = start_date + timedelta(days=num_of_days) + timedelta(microseconds=-1)
+    end_date = start_date + timedelta(days=num_of_days, microseconds=-1)
 
     output_filename = start_date.strftime(DATE_FORMAT) + '_' + end_date.strftime(DATE_FORMAT) + FILENAME_SUFFIX
     if os.path.exists(output_filename):
         os.remove(output_filename)
 
-    for days in range(0, get_number_of_days()):
-        current_date = start_date + timedelta(days=(days))
-        end_date = current_date + timedelta(days=1, microseconds=-1)
-        get_logger().info(f'Starting requests for day {days+1}: {current_date.date()}')
-
-        start_timestamp = current_date.replace(tzinfo=timezone.utc).timestamp()
-        end_timestamp = end_date.replace(tzinfo=timezone.utc).timestamp()
-
-        duration = (end_date - current_date).total_seconds()
-        offset = 60 * 5
-        num_of_iterations = int(duration / offset)
-
-        for i in range(num_of_iterations):
-            period_start = datetime.utcfromtimestamp(start_timestamp)
-            period_end = (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1))
-            get_logger().debug(f'Running query from {period_start} to {period_end}')
-            response = run_query(period_start, period_end)
-            response = wait_for_the_query_to_complete(response)
-            write_requests_to_a_file(response, start_date, end_date, output_filename)
-            start_timestamp = start_timestamp + offset
-        if Decimal(duration) / Decimal(offset) % Decimal(1) != Decimal(0):
-            period_start = datetime.utcfromtimestamp(start_timestamp)
-            period_end = (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1))
-            get_logger().debug(f'Running query from {period_start} to {period_end}')
-            response = run_query(period_start, period_end)
-            response = wait_for_the_query_to_complete(response)
-            write_requests_to_a_file(response, start_date, end_date, output_filename)
+    period_start = datetime.utcfromtimestamp(start_date.replace(tzinfo=timezone.utc).timestamp())
+    while period_start < end_date:
+        period_end = period_start + timedelta(seconds=PERIOD_WIDTH_IN_SECONDS, microseconds=-1)
+        get_logger().debug(f'Running query from {period_start} to {period_end}')
+        response = run_query(period_start, period_end)
+        response = wait_for_the_query_to_complete(response)
+        write_requests_to_a_file(response, start_date, end_date, output_filename)
+        period_start += timedelta(seconds=PERIOD_WIDTH_IN_SECONDS)
