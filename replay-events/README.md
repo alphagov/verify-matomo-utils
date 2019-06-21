@@ -18,7 +18,7 @@ It tags the image `matomo-replay-events` by default.
 An example workflow using this script might be something like this:
 
 ```
-mv download-logs/aws_logs.txt.ndjson replay-events/access.log
+mv retrieve-logs/20190101_20190101_matomo_requests.json replay-events/access.log
 cd replay-events
 export MATOMO_URL='https://my.matomo.url/'
 export MATOMO_TOKEN=hex_string_here
