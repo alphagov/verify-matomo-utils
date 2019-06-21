@@ -10,6 +10,7 @@ NUM_OF_DAYS = 'NUM_OF_DAYS'
 START_DATE = 'START_DATE'
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
+MAX_REQUESTS = 10_000
 
 _logger = None
 
@@ -54,10 +55,14 @@ def get_number_of_days():
 def wait_for_the_query_to_complete(response):
     queryId = response['queryId']
     status = 'Running'
+    seconds_slept = 0
     while status != 'Complete':
+        time.sleep(1)
+        seconds_slept += 1
+        if seconds_slept % 30 == 0:
+            get_logger().debug(f'Still waiting for a request. Spent {seconds_slept} seconds waiting so far.')
         response = client.get_query_results(queryId=queryId)
         status = response['status']
-        time.sleep(1)
     return response
 
 
@@ -79,13 +84,24 @@ def run_query(start_timestamp, end_timestamp):
     )
 
 
-def write_requests_to_a_file(response, start_date, end_date, output_filename):
+def write_requests_to_a_file(response, period_start, period_end, output_filename):
+    count_written = 0
     with open(output_filename, 'a+') as f:
         for message in response['results']:
+            if len(message) >= MAX_REQUESTS:
+                get_logger().warning(
+                        f'10000 requests received from the period {period_start} to {period_end}.'
+                        + ' Some requests may not have been downloaded properly as a result.'
+                        + ' Please consider decreasing the offset to ensure all requests are downloaded.')
             for message in message:
                 if message['field'] == '@message':
                     f.write(message['value'] + '\n')
+                    count_written += 1
                     break
+    if count_written > 0:
+        get_logger().debug(
+                f'Wrote {count_written} requests to file {output_filename}'
+                + f' from within the period {period_start} to {period_end}')
 
 
 if __name__ == '__main__':
@@ -104,6 +120,7 @@ if __name__ == '__main__':
     for days in range(0, get_number_of_days()):
         current_date = start_date + timedelta(days=(days))
         end_date = current_date + timedelta(days=1, microseconds=-1)
+        get_logger().info(f'Starting requests for day {days+1}: {current_date.date()}')
 
         start_timestamp = current_date.replace(tzinfo=timezone.utc).timestamp()
         end_timestamp = end_date.replace(tzinfo=timezone.utc).timestamp()
@@ -113,13 +130,17 @@ if __name__ == '__main__':
         num_of_iterations = int(duration / offset)
 
         for i in range(num_of_iterations):
-            response = run_query(datetime.utcfromtimestamp(start_timestamp),
-                                 (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1)))
+            period_start = datetime.utcfromtimestamp(start_timestamp)
+            period_end = (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1))
+            get_logger().debug(f'Running query from {period_start} to {period_end}')
+            response = run_query(period_start, period_end)
             response = wait_for_the_query_to_complete(response)
             write_requests_to_a_file(response, start_date, end_date, output_filename)
             start_timestamp = start_timestamp + offset
         if Decimal(duration) / Decimal(offset) % Decimal(1) != Decimal(0):
-            response = run_query(datetime.utcfromtimestamp(start_timestamp),
-                                 (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1)))
+            period_start = datetime.utcfromtimestamp(start_timestamp)
+            period_end = (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1))
+            get_logger().debug(f'Running query from {period_start} to {period_end}')
+            response = run_query(period_start, period_end)
             response = wait_for_the_query_to_complete(response)
             write_requests_to_a_file(response, start_date, end_date, output_filename)
