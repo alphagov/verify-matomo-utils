@@ -32,5 +32,6 @@ docker run --rm \
     -e START_DATE \
     -e NUM_OF_DAYS \
     -e LOG_LEVEL \
+    -e OUTPUT_FILENAME \
     -e PERIOD_WIDTH_IN_SECONDS \
     -it matomo-retrieve-logs

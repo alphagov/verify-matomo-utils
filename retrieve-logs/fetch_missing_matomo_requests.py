@@ -7,6 +7,7 @@ from _decimal import Decimal
 
 LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
+OUTPUT_FILENAME = 'OUTPUT_FILENAME'
 PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
 START_DATE = 'START_DATE'
 
@@ -46,7 +47,7 @@ def validate_environment_variables():
         log_unset_env_variable_error_and_exit(NUM_OF_DAYS)
 
 
-def get_start_date():
+def get_start_datetime():
     try:
         return datetime.strptime(os.getenv(START_DATE), DATE_FORMAT)
     except ValueError:
@@ -68,6 +69,13 @@ def get_period_width():
     except ValueError:
         get_logger().exception('PERIOD_WIDTH_IN_SECONDS has an invalid format. Please specify an integer.')
         exit(1)
+
+
+def get_output_filename(start_datetime, end_datetime):
+    filename = os.getenv(OUTPUT_FILENAME)
+    if filename is None or len(filename) < 1:
+        return start_datetime.strftime(DATE_FORMAT) + '_' + end_datetime.strftime(DATE_FORMAT) + FILENAME_SUFFIX
+    return filename
 
 
 def wait_for_the_query_to_complete(response):
@@ -124,20 +132,20 @@ if __name__ == '__main__':
 
     client = boto3.client('logs')
 
-    start_date = get_start_date()
+    start_datetime = get_start_datetime()
     num_of_days = get_number_of_days()
     period_width = get_period_width()
-    end_date = start_date + timedelta(days=num_of_days, microseconds=-1)
+    end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
 
-    output_filename = start_date.strftime(DATE_FORMAT) + '_' + end_date.strftime(DATE_FORMAT) + FILENAME_SUFFIX
+    output_filename = get_output_filename(start_datetime, end_datetime)
     if os.path.exists(output_filename):
         os.remove(output_filename)
 
-    period_start = datetime.utcfromtimestamp(start_date.replace(tzinfo=timezone.utc).timestamp())
-    while period_start < end_date:
+    period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
+    while period_start < end_datetime:
         period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
         get_logger().debug(f'Running query from {period_start} to {period_end}')
         response = run_query(period_start, period_end)
         response = wait_for_the_query_to_complete(response)
-        write_requests_to_a_file(response, start_date, end_date, output_filename)
+        write_requests_to_a_file(response, start_datetime, end_datetime, output_filename)
         period_start += timedelta(seconds=period_width)
