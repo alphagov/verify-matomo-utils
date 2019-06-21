@@ -7,11 +7,12 @@ from _decimal import Decimal
 
 LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
+PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
 START_DATE = 'START_DATE'
+
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
 MAX_REQUESTS = 10_000
-PERIOD_WIDTH_IN_SECONDS = 60 * 5
 
 _logger = None
 
@@ -23,6 +24,14 @@ def get_logger():
         _logger = logging.getLogger(__name__)
         _logger.setLevel(os.getenv(LOG_LEVEL, logging.INFO))
     return _logger
+
+
+def log_too_many_requests_and_exit(period_start, period_end):
+    get_logger().error(
+            f'10000 requests received from the period {period_start} to {period_end}.'
+            + ' Some requests may not have been downloaded properly as a result.'
+            + ' The period size should be decreased to ensure all requests are downloaded.')
+    exit(1)
 
 
 def log_unset_env_variable_error_and_exit(environment_variable):
@@ -50,6 +59,14 @@ def get_number_of_days():
         return int(os.getenv(NUM_OF_DAYS))
     except ValueError:
         get_logger().exception('NUM_OF_DAYS has an invalid format. Please specify an integer.')
+        exit(1)
+
+
+def get_period_width():
+    try:
+        return int(os.getenv(PERIOD_WIDTH_IN_SECONDS, 60 * 5))
+    except ValueError:
+        get_logger().exception('PERIOD_WIDTH_IN_SECONDS has an invalid format. Please specify an integer.')
         exit(1)
 
 
@@ -90,10 +107,7 @@ def write_requests_to_a_file(response, period_start, period_end, output_filename
     with open(output_filename, 'a+') as f:
         for message in response['results']:
             if len(message) >= MAX_REQUESTS:
-                get_logger().warning(
-                        f'10000 requests received from the period {period_start} to {period_end}.'
-                        + ' Some requests may not have been downloaded properly as a result.'
-                        + ' Please consider decreasing the offset to ensure all requests are downloaded.')
+                log_too_many_requests_and_exit(period_start, period_end)
             for message in message:
                 if message['field'] == '@message':
                     f.write(message['value'] + '\n')
@@ -112,6 +126,7 @@ if __name__ == '__main__':
 
     start_date = get_start_date()
     num_of_days = get_number_of_days()
+    period_width = get_period_width()
     end_date = start_date + timedelta(days=num_of_days, microseconds=-1)
 
     output_filename = start_date.strftime(DATE_FORMAT) + '_' + end_date.strftime(DATE_FORMAT) + FILENAME_SUFFIX
@@ -120,9 +135,9 @@ if __name__ == '__main__':
 
     period_start = datetime.utcfromtimestamp(start_date.replace(tzinfo=timezone.utc).timestamp())
     while period_start < end_date:
-        period_end = period_start + timedelta(seconds=PERIOD_WIDTH_IN_SECONDS, microseconds=-1)
+        period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
         get_logger().debug(f'Running query from {period_start} to {period_end}')
         response = run_query(period_start, period_end)
         response = wait_for_the_query_to_complete(response)
         write_requests_to_a_file(response, start_date, end_date, output_filename)
-        period_start += timedelta(seconds=PERIOD_WIDTH_IN_SECONDS)
+        period_start += timedelta(seconds=period_width)
