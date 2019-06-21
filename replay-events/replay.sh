@@ -18,6 +18,12 @@ if [ ! -f "access.log" ]; then
     exit 1
 fi
 
+function be_in_directory {
+    cd "$( dirname "${BASH_SOURCE[0]}" )"
+}
+
+be_in_directory
+
 docker build -t matomo-replay-events .
 
 docker run --rm \
