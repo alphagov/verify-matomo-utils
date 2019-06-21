@@ -6,6 +6,8 @@ from _decimal import Decimal
 
 NUM_OF_DAYS = 'NUM_OF_DAYS'
 START_DATE = 'START_DATE'
+DATE_FORMAT = '%Y-%m-%d'
+FILENAME_SUFFIX = '_matomo_requests.json'
 
 
 def print_unset_env_variable_error_and_exit(environment_variable):
@@ -22,9 +24,9 @@ def validate_environment_variables():
 
 def get_start_date():
     try:
-        return datetime.strptime(os.getenv(START_DATE), '%Y-%m-%dT%H:%M:%S%z')
+        return datetime.strptime(os.getenv(START_DATE), DATE_FORMAT)
     except ValueError:
-        print('START_DATE has an invalid date and time format. It should be in %Y-%m-%dT%H:%M:%S%z')
+        print(f'START_DATE has an invalid format. Please follow the format: "{DATE_FORMAT}".')
         exit(1)
 
 
@@ -32,7 +34,7 @@ def get_number_of_days():
     try:
         return int(os.getenv(NUM_OF_DAYS))
     except ValueError:
-        print('NUM_OF_DAYS has an invalid format. It should be in integers only')
+        print('NUM_OF_DAYS has an invalid format. Please specify an integer.')
         exit(1)
 
 
@@ -82,9 +84,9 @@ if __name__ == '__main__':
     num_of_days = get_number_of_days()
     end_date = start_date + timedelta(days=num_of_days) + timedelta(microseconds=-1)
 
-    OUTPUT_FILENAME = start_date.strftime('%Y%m%d') + '_' + end_date.strftime('%Y%m%d') + '_matomo_requests.json'
-    if os.path.exists(OUTPUT_FILENAME):
-        os.remove(OUTPUT_FILENAME)
+    output_filename = start_date.strftime(DATE_FORMAT) + '_' + end_date.strftime(DATE_FORMAT) + FILENAME_SUFFIX
+    if os.path.exists(output_filename):
+        os.remove(output_filename)
 
     for days in range(0, get_number_of_days()):
         current_date = start_date + timedelta(days=(days))
@@ -101,10 +103,10 @@ if __name__ == '__main__':
             response = run_query(datetime.utcfromtimestamp(start_timestamp),
                                  (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1)))
             response = wait_for_the_query_to_complete(response)
-            write_requests_to_a_file(response, start_date, end_date, OUTPUT_FILENAME)
+            write_requests_to_a_file(response, start_date, end_date, output_filename)
             start_timestamp = start_timestamp + offset
         if Decimal(duration) / Decimal(offset) % Decimal(1) != Decimal(0):
             response = run_query(datetime.utcfromtimestamp(start_timestamp),
                                  (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1)))
             response = wait_for_the_query_to_complete(response)
-            write_requests_to_a_file(response, start_date, end_date, OUTPUT_FILENAME)
+            write_requests_to_a_file(response, start_date, end_date, output_filename)
