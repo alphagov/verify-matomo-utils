@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD [ "python", "./fetch_missing_matomo_requests.py" ]
+CMD [ "python", "-u", "./fetch_missing_matomo_requests.py" ]
