@@ -40,7 +40,7 @@ def get_start_date():
     try:
         return datetime.strptime(os.getenv(START_DATE), DATE_FORMAT)
     except ValueError:
-        get_logger().error(f'START_DATE has an invalid format. Please follow the format: "{DATE_FORMAT}".')
+        get_logger().exception(f'START_DATE has an invalid format. Please follow the format: "{DATE_FORMAT}".')
         exit(1)
 
 
@@ -48,7 +48,7 @@ def get_number_of_days():
     try:
         return int(os.getenv(NUM_OF_DAYS))
     except ValueError:
-        get_logger().error('NUM_OF_DAYS has an invalid format. Please specify an integer.')
+        get_logger().exception('NUM_OF_DAYS has an invalid format. Please specify an integer.')
         exit(1)
 
 
