@@ -125,6 +125,7 @@ def write_requests_to_a_file(response, period_start, period_end, output_filename
         get_logger().debug(
                 f'Wrote {count_written} requests to file {output_filename}'
                 + f' from within the period {period_start} to {period_end}')
+    return count_written
 
 
 if __name__ == '__main__':
@@ -142,10 +143,13 @@ if __name__ == '__main__':
         os.remove(output_filename)
 
     period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
+    total_written = 0
     while period_start < end_datetime:
         period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
         get_logger().debug(f'Running query from {period_start} to {period_end}')
         response = run_query(period_start, period_end)
         response = wait_for_the_query_to_complete(response)
-        write_requests_to_a_file(response, start_datetime, end_datetime, output_filename)
+        total_written += write_requests_to_a_file(response, start_datetime, end_datetime, output_filename)
         period_start += timedelta(seconds=period_width)
+
+    get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
