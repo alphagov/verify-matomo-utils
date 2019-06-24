@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 set -e
 
@@ -19,7 +19,11 @@ if [ ! -f "access.log" ]; then
 fi
 
 function be_in_directory {
-    cd "$( dirname "${BASH_SOURCE[0]}" )"
+    # Sourced from Stack Overflow answer
+    # https://stackoverflow.com/a/29835459
+    # author: https://stackoverflow.com/users/1230559/city
+    # answer author: https://stackoverflow.com/users/45375/mklement0
+    cd -- "$(dirname -- "$0")"
 }
 
 be_in_directory
