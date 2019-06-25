@@ -34,4 +34,5 @@ docker run --rm \
     --mount type=bind,source="$(pwd)"/access.log,target=/access.log \
     -e MATOMO_URL \
     -e MATOMO_TOKEN \
+    -e DRY_RUN \
     -it matomo-replay-events
