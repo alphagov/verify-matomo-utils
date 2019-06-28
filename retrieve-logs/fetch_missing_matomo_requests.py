@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 import os
 import boto3
 import logging
@@ -48,9 +48,15 @@ def validate_environment_variables():
 
 def get_start_datetime():
     try:
-        return datetime.strptime(os.getenv(START_DATE), DATE_FORMAT)
+        start_date_env = os.getenv(START_DATE)
+        if start_date_env == 'yesterday':
+            start_of_day = datetime.combine(date.today(), time())
+            return start_of_day - timedelta(days=1)
+        return datetime.strptime(start_date_env, DATE_FORMAT)
     except ValueError:
-        get_logger().exception(f'START_DATE has an invalid format. Please follow the format: "{DATE_FORMAT}".')
+        get_logger().exception(
+                f'START_DATE has an invalid format. Please follow the format "{DATE_FORMAT}"'
+                + ' or use the keyword "yesterday".')
         exit(1)
 
 
