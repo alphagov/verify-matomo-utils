@@ -112,10 +112,10 @@ def run_query(start_timestamp, end_timestamp):
 def write_requests_to_a_file(response, period_start, period_end, output_filename):
     count_written = 0
     with open(output_filename, 'a+') as f:
-        for message in response['results']:
-            if len(message) >= MAX_REQUESTS:
+        for message_list in response['results']:
+            if len(message_list) >= MAX_REQUESTS:
                 log_too_many_requests_and_exit(period_start, period_end)
-            for message in message:
+            for message in message_list:
                 if message['field'] == '@message':
                     f.write(message['value'] + '\n')
                     count_written += 1
