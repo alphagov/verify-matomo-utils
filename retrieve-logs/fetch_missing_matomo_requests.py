@@ -144,7 +144,7 @@ if __name__ == '__main__':
 
     period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
     total_written = 0
-    while period_start < end_datetime:
+    while period_start <= end_datetime:
         period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
         get_logger().debug(f'Running query from {period_start} to {period_end}')
         response = run_query(period_start, period_end)
