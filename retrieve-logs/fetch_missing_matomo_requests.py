@@ -3,7 +3,6 @@ import os
 import boto3
 import logging
 import time
-from _decimal import Decimal
 
 LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
