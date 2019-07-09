@@ -28,7 +28,7 @@ def get_logger():
 
 def log_too_many_requests_and_exit(period_start, period_end):
     get_logger().error(
-            f'10000 requests received from the period {period_start} to {period_end}.'
+            f'{MAX_REQUESTS} requests received from the period {period_start} to {period_end}.'
             + ' Some requests may not have been downloaded properly as a result.'
             + ' The period size should be decreased to ensure all requests are downloaded.')
     exit(1)
@@ -105,7 +105,7 @@ def run_query(start_timestamp, end_timestamp):
         | filter user_agent!='ELB-HealthChecker/2.0'
         | filter path like /idsite=1/
         | filter path like /rec=1/""",
-        limit=10000
+        limit=MAX_REQUESTS
     )
 
 
