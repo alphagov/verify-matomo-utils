@@ -106,8 +106,7 @@ def run_query(start_timestamp, end_timestamp):
         """fields @message
         | sort @timestamp asc
         | filter @logStream like /matomo-nginx/
-        | filter status!='200'
-        | filter status!='204'
+        | filter status >= '500'
         | filter user_agent!='ELB-HealthChecker/2.0'
         | filter path like /idsite=1/
         | filter path like /rec=1/""",
