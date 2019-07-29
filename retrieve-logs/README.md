@@ -20,7 +20,7 @@ Namely, you will need to set the following environment variables to appropriate 
     ```
 3. Run the following command to get the file containing missing Matomo requests. You need to specify START_DATE and NUM_OF_DAYS before you run the command.
     ```
-    docker run -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION -e START_DATE=2019-01-01T00:00:00+00:00 -e NUM_OF_DAYS=1 -v $(pwd):/app -it --rm --name my-running-app matomo-retrieve-logs
+    docker run -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION -e START_DATE=2019-01-01T00:00:00+00:00 -e NUM_OF_DAYS=1 -v $(pwd):/app -it --rm matomo-retrieve-logs
     ```
 4. If the newly generated file is not empty, run the following command to clone `matomo-log-analytics` GitHub repository.
     ```

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 set -e
 
@@ -18,10 +18,21 @@ if [ ! -f "access.log" ]; then
     exit 1
 fi
 
+function be_in_directory {
+    # Sourced from Stack Overflow answer
+    # https://stackoverflow.com/a/29835459
+    # author: https://stackoverflow.com/users/1230559/city
+    # answer author: https://stackoverflow.com/users/45375/mklement0
+    cd -- "$(dirname -- "$0")"
+}
+
+be_in_directory
+
 docker build -t matomo-replay-events .
 
 docker run --rm \
     --mount type=bind,source="$(pwd)"/access.log,target=/access.log \
     -e MATOMO_URL \
     -e MATOMO_TOKEN \
+    -e DRY_RUN \
     -it matomo-replay-events

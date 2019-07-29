@@ -1,30 +1,62 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 import os
 import boto3
+import logging
 import time
-from _decimal import Decimal
 
+LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
+OUTPUT_FILENAME = 'OUTPUT_FILENAME'
+PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
 START_DATE = 'START_DATE'
 
+DATE_FORMAT = '%Y-%m-%d'
+FILENAME_SUFFIX = '_matomo_requests.json'
+MAX_REQUESTS = 10_000
 
-def print_unset_env_variable_error_and_exit(environment_variable):
-    print(environment_variable, " environment variable is not set.")
+_logger = None
+
+
+def get_logger():
+    global _logger
+    if not _logger:
+        logging.basicConfig(level=logging.INFO)
+        _logger = logging.getLogger(__name__)
+        _logger.setLevel(os.getenv(LOG_LEVEL, logging.INFO))
+    return _logger
+
+
+def log_too_many_requests_and_exit(period_start, period_end):
+    get_logger().error(
+            f'{MAX_REQUESTS} requests received from the period {period_start} to {period_end}.'
+            + ' Some requests may not have been downloaded properly as a result.'
+            + ' The period size should be decreased to ensure all requests are downloaded.')
+    exit(1)
+
+
+def log_unset_env_variable_error_and_exit(environment_variable):
+    get_logger().error(f'{environment_variable} environment variable is not set.')
     exit(1)
 
 
 def validate_environment_variables():
     if os.getenv(START_DATE) is None:
-        print_unset_env_variable_error_and_exit(START_DATE)
+        log_unset_env_variable_error_and_exit(START_DATE)
     if os.getenv(NUM_OF_DAYS) is None:
-        print_unset_env_variable_error_and_exit(NUM_OF_DAYS)
+        log_unset_env_variable_error_and_exit(NUM_OF_DAYS)
 
 
-def get_start_date():
+def get_start_datetime():
     try:
-        return datetime.strptime(os.getenv(START_DATE), '%Y-%m-%dT%H:%M:%S%z')
+        start_date_env = os.getenv(START_DATE)
+        if start_date_env == 'yesterday':
+            start_of_day = datetime.combine(date.today(), time())
+            return start_of_day - timedelta(days=1)
+        return datetime.strptime(start_date_env, DATE_FORMAT)
     except ValueError:
-        print("START_DATE has an invalid date and time format. It should be in %Y-%m-%dT%H:%M:%S%z")
+        get_logger().exception(
+                f'START_DATE has an invalid format. Please follow the format "{DATE_FORMAT}"'
+                + ' or use the keyword "yesterday".')
         exit(1)
 
 
@@ -32,17 +64,36 @@ def get_number_of_days():
     try:
         return int(os.getenv(NUM_OF_DAYS))
     except ValueError:
-        print("NUM_OF_DAYS has an invalid format. It should be in integers only")
+        get_logger().exception('NUM_OF_DAYS has an invalid format. Please specify an integer.')
         exit(1)
+
+
+def get_period_width():
+    try:
+        return int(os.getenv(PERIOD_WIDTH_IN_SECONDS, 60 * 5))
+    except ValueError:
+        get_logger().exception('PERIOD_WIDTH_IN_SECONDS has an invalid format. Please specify an integer.')
+        exit(1)
+
+
+def get_output_filename(start_datetime, end_datetime):
+    filename = os.getenv(OUTPUT_FILENAME)
+    if filename is None or len(filename) < 1:
+        return start_datetime.strftime(DATE_FORMAT) + '_' + end_datetime.strftime(DATE_FORMAT) + FILENAME_SUFFIX
+    return filename
 
 
 def wait_for_the_query_to_complete(response):
     queryId = response['queryId']
     status = 'Running'
+    seconds_slept = 0
     while status != 'Complete':
+        time.sleep(1)
+        seconds_slept += 1
+        if seconds_slept % 30 == 0:
+            get_logger().debug(f'Still waiting for a request. Spent {seconds_slept} seconds waiting so far.')
         response = client.get_query_results(queryId=queryId)
         status = response['status']
-        time.sleep(1)
     return response
 
 
@@ -55,22 +106,30 @@ def run_query(start_timestamp, end_timestamp):
         """fields @message
         | sort @timestamp asc
         | filter @logStream like /matomo-nginx/
-        | filter status!='200'
-        | filter status!='204'
+        | filter status >= '500'
         | filter user_agent!='ELB-HealthChecker/2.0'
         | filter path like /idsite=1/
         | filter path like /rec=1/""",
-        limit=10000
+        limit=MAX_REQUESTS
     )
 
 
-def write_requests_to_a_file(response, start_date, end_date, output_filename):
+def write_requests_to_a_file(response, period_start, period_end, output_filename):
+    count_written = 0
     with open(output_filename, 'a+') as f:
-        for message in response['results']:
-            for message in message:
+        for message_list in response['results']:
+            if len(message_list) >= MAX_REQUESTS:
+                log_too_many_requests_and_exit(period_start, period_end)
+            for message in message_list:
                 if message['field'] == '@message':
                     f.write(message['value'] + '\n')
+                    count_written += 1
                     break
+    if count_written > 0:
+        get_logger().debug(
+                f'Wrote {count_written} requests to file {output_filename}'
+                + f' from within the period {period_start} to {period_end}')
+    return count_written
 
 
 if __name__ == '__main__':
@@ -78,33 +137,23 @@ if __name__ == '__main__':
 
     client = boto3.client('logs')
 
-    start_date = get_start_date()
+    start_datetime = get_start_datetime()
     num_of_days = get_number_of_days()
-    end_date = start_date + timedelta(days=num_of_days) + timedelta(microseconds=-1)
+    period_width = get_period_width()
+    end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
 
-    OUTPUT_FILENAME = start_date.strftime('%Y%m%d') + '_' + end_date.strftime('%Y%m%d') + '_matomo_requests.json'
-    if os.path.exists(OUTPUT_FILENAME):
-        os.remove(OUTPUT_FILENAME)
+    output_filename = get_output_filename(start_datetime, end_datetime)
+    if os.path.exists(output_filename):
+        os.remove(output_filename)
 
-    for days in range(0, get_number_of_days()):
-        current_date = start_date + timedelta(days=(days))
-        end_date = current_date + timedelta(days=1, microseconds=-1)
+    period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
+    total_written = 0
+    while period_start <= end_datetime:
+        period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
+        get_logger().debug(f'Running query from {period_start} to {period_end}')
+        response = run_query(period_start, period_end)
+        response = wait_for_the_query_to_complete(response)
+        total_written += write_requests_to_a_file(response, start_datetime, end_datetime, output_filename)
+        period_start += timedelta(seconds=period_width)
 
-        start_timestamp = current_date.replace(tzinfo=timezone.utc).timestamp()
-        end_timestamp = end_date.replace(tzinfo=timezone.utc).timestamp()
-
-        duration = (end_date - current_date).total_seconds()
-        offset = 60 * 5
-        num_of_iterations = int(duration / offset)
-
-        for i in range(num_of_iterations):
-            response = run_query(datetime.utcfromtimestamp(start_timestamp),
-                                 (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1)))
-            response = wait_for_the_query_to_complete(response)
-            write_requests_to_a_file(response, start_date, end_date, OUTPUT_FILENAME)
-            start_timestamp = start_timestamp + offset
-        if Decimal(duration) / Decimal(offset) % Decimal(1) != Decimal(0):
-            response = run_query(datetime.utcfromtimestamp(start_timestamp),
-                                 (datetime.utcfromtimestamp((start_timestamp + offset)) + timedelta(microseconds=-1)))
-            response = wait_for_the_query_to_complete(response)
-            write_requests_to_a_file(response, start_date, end_date, OUTPUT_FILENAME)
+    get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
