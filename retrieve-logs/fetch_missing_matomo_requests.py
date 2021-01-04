@@ -1,8 +1,10 @@
 from datetime import date, datetime, time, timedelta, timezone
+from concurrent import futures
 import os
 import boto3
 import logging
 import time
+import re
 
 LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
@@ -82,23 +84,8 @@ def get_output_filename(start_datetime, end_datetime):
         return start_datetime.strftime(DATE_FORMAT) + '_' + end_datetime.strftime(DATE_FORMAT) + FILENAME_SUFFIX
     return filename
 
-
-def wait_for_the_query_to_complete(response):
-    queryId = response['queryId']
-    status = 'Running'
-    seconds_slept = 0
-    while status != 'Complete':
-        time.sleep(1)
-        seconds_slept += 1
-        if seconds_slept % 30 == 0:
-            get_logger().debug(f'Still waiting for a request. Spent {seconds_slept} seconds waiting so far.')
-        response = client.get_query_results(queryId=queryId)
-        status = response['status']
-    return response
-
-
 def run_query(start_timestamp, end_timestamp):
-    return client.start_query(
+    response =  client.start_query(
         logGroupName='matomo',
         startTime=int(start_timestamp.timestamp() * 1000),
         endTime=int(end_timestamp.timestamp() * 1000),
@@ -112,25 +99,30 @@ def run_query(start_timestamp, end_timestamp):
         | filter path like /rec=1/""",
         limit=MAX_REQUESTS
     )
+    queryId = response['queryId']
+    status = 'Running'
+    seconds_slept = 0
+    while status != 'Complete':
+        time.sleep(1)
+        seconds_slept += 1
+        if seconds_slept % 30 == 0:
+            get_logger().debug(f'Still waiting for a request. Spent {seconds_slept} seconds waiting so far.')
+        response = client.get_query_results(queryId=queryId)
+        status = response['status']
+    return start_timestamp, end_timestamp, response
 
+def extract_requests_from_response(response, period_start, period_end):
+    messages = []
+    for message_list in response['results']:
+        if len(message_list) >= MAX_REQUESTS:
+            log_too_many_requests_and_exit(period_start, period_end)
+        for message in message_list:
+            if message['field'] == '@message':
+                messages.append(message['value'])
+                break
+    get_logger().debug(f'extracted {len(messages)} requests for the period {period_start} to {period_end}')
 
-def write_requests_to_a_file(response, period_start, period_end, output_filename):
-    count_written = 0
-    with open(output_filename, 'a+') as f:
-        for message_list in response['results']:
-            if len(message_list) >= MAX_REQUESTS:
-                log_too_many_requests_and_exit(period_start, period_end)
-            for message in message_list:
-                if message['field'] == '@message':
-                    f.write(message['value'] + '\n')
-                    count_written += 1
-                    break
-    if count_written > 0:
-        get_logger().debug(
-                f'Wrote {count_written} requests to file {output_filename}'
-                + f' from within the period {period_start} to {period_end}')
-    return count_written
-
+    return messages
 
 if __name__ == '__main__':
     validate_environment_variables()
@@ -148,12 +140,24 @@ if __name__ == '__main__':
 
     period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
     total_written = 0
-    while period_start <= end_datetime:
-        period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
-        get_logger().debug(f'Running query from {period_start} to {period_end}')
-        response = run_query(period_start, period_end)
-        response = wait_for_the_query_to_complete(response)
-        total_written += write_requests_to_a_file(response, start_datetime, end_datetime, output_filename)
-        period_start += timedelta(seconds=period_width)
+    futures_list = []
+    requests = []
+    with futures.ThreadPoolExecutor(5) as executor:
+        while period_start <= end_datetime:
+            period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
+            get_logger().debug(f'Scheduling query from {period_start} to {period_end}')
+            futures_list.append(executor.submit(run_query, period_start, period_end))
+            period_start += timedelta(seconds=period_width)
+
+        for future in futures.as_completed(futures_list):
+            period_start, period_end, response = future.result()
+            period_requests = 
+            requests += extract_requests_from_response(response, period_start, period_end)
+
+    
+    with open(output_filename, 'a+') as f:
+        for request in requests.sort(key=lambda request: re.findall(r'msec": "(.+?)"', request)[0]):
+            total_written += 1
+            f.write(request + '\n')
 
     get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
