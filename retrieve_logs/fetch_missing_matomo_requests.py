@@ -85,7 +85,7 @@ def get_output_filename(start_datetime, end_datetime):
         return start_datetime.strftime(DATE_FORMAT) + '_' + end_datetime.strftime(DATE_FORMAT) + FILENAME_SUFFIX
     return filename
 
-def run_query(start_timestamp, end_timestamp):
+def run_query(client, start_timestamp, end_timestamp):
     response =  client.start_query(
         logGroupName='matomo',
         startTime=int(start_timestamp.timestamp() * 1000),
@@ -109,7 +109,11 @@ def run_query(start_timestamp, end_timestamp):
         if seconds_slept % 30 == 0:
             get_logger().debug(f'Still waiting for a request. Spent {seconds_slept} seconds waiting so far.')
         response = client.get_query_results(queryId=queryId)
-        status = response['status']
+        try:
+            status = response['status']
+        except KeyError:
+            print(response.keys())
+            raise
     return start_timestamp, end_timestamp, response
 
 def extract_requests_from_response(response, period_start, period_end):
@@ -134,16 +138,8 @@ def write_requests_to_file(requests, output_filename):
 
     return total_written
 
-if __name__ == '__main__':
-    validate_environment_variables()
-
-    client = boto3.client('logs')
-
-    start_datetime = get_start_datetime()
-    num_of_days = get_number_of_days()
+def download_failed_requests(client, start_datetime, end_datetime):
     period_width = get_period_width()
-    end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
-
     output_filename = get_output_filename(start_datetime, end_datetime)
     if os.path.exists(output_filename):
         os.remove(output_filename)
@@ -156,13 +152,26 @@ if __name__ == '__main__':
         while period_start <= end_datetime:
             period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
             get_logger().debug(f'Scheduling query from {period_start} to {period_end}')
-            futures_list.append(executor.submit(run_query, period_start, period_end))
+            futures_list.append(executor.submit(run_query, client, period_start, period_end))
             period_start += timedelta(seconds=period_width)
 
         for future in futures.as_completed(futures_list):
             period_start, period_end, response = future.result()
             requests += extract_requests_from_response(response, period_start, period_end)
 
-    total_written = write_requets_to_file(requests, output_filename)
+    total_written = write_requests_to_file(requests, output_filename)
 
     get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
+
+
+if __name__ == '__main__':
+    validate_environment_variables()
+
+    client = boto3.client('logs')
+
+    start_datetime = get_start_datetime()
+    num_of_days = get_number_of_days()
+    end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
+
+    download_failed_requests(client, start_datetime, end_datetime)
+
