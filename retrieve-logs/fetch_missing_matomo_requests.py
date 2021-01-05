@@ -11,6 +11,7 @@ NUM_OF_DAYS = 'NUM_OF_DAYS'
 OUTPUT_FILENAME = 'OUTPUT_FILENAME'
 PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
 START_DATE = 'START_DATE'
+NUM_THREADS = os.getenv('NUM_THREADS', 8)
 
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
@@ -124,6 +125,15 @@ def extract_requests_from_response(response, period_start, period_end):
 
     return messages
 
+def write_requests_to_file(requests, output_filename):
+    total_written = 0
+    with open(output_filename, 'a+') as f:
+        for request in sorted(requests, key=lambda request: re.findall(r'msec": "(.+?)"', request)[0]):
+            total_written += 1
+            f.write(request + '\n')
+
+    return total_written
+
 if __name__ == '__main__':
     validate_environment_variables()
 
@@ -142,7 +152,7 @@ if __name__ == '__main__':
     total_written = 0
     futures_list = []
     requests = []
-    with futures.ThreadPoolExecutor(5) as executor:
+    with futures.ThreadPoolExecutor(NUM_THREADS) as executor:
         while period_start <= end_datetime:
             period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
             get_logger().debug(f'Scheduling query from {period_start} to {period_end}')
@@ -151,13 +161,8 @@ if __name__ == '__main__':
 
         for future in futures.as_completed(futures_list):
             period_start, period_end, response = future.result()
-            period_requests = 
             requests += extract_requests_from_response(response, period_start, period_end)
 
-    
-    with open(output_filename, 'a+') as f:
-        for request in requests.sort(key=lambda request: re.findall(r'msec": "(.+?)"', request)[0]):
-            total_written += 1
-            f.write(request + '\n')
+    total_written = write_requets_to_file(requests, output_filename)
 
     get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
