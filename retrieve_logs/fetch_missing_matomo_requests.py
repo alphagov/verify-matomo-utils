@@ -1,10 +1,11 @@
-from datetime import date, datetime, time, timedelta, timezone
-from concurrent import futures
 import os
-import boto3
 import logging
 import time
 import re
+from datetime import date, datetime, timedelta, timezone, time as datetime_time
+from concurrent import futures
+
+import boto3
 
 LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
@@ -53,7 +54,7 @@ def get_start_datetime():
     try:
         start_date_env = os.getenv(START_DATE)
         if start_date_env == 'yesterday':
-            start_of_day = datetime.combine(date.today(), time())
+            start_of_day = datetime.combine(date.today(), datetime_time())
             return start_of_day - timedelta(days=1)
         return datetime.strptime(start_date_env, DATE_FORMAT)
     except ValueError:
