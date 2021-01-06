@@ -1,9 +1,11 @@
 #!/usr/bin/env python
-from retrieve_logs.fetch_missing_matomo_requests import get_logger, download_failed_requests
-from datetime import datetime, timedelta
 import time
 import re
+from datetime import datetime, timedelta
+
 import boto3
+
+from retrieve_logs.fetch_missing_matomo_requests import get_logger, download_failed_requests
 
 DATE_FORMAT = '%d/%m/%y'
 DATETIME_FORMAT = '%m/%d/%Y %H:%M:%S'
@@ -64,6 +66,18 @@ def return_date_and_records_count_from_completed_query(client, query_id):
         )
     ), response['statistics']['recordsMatched']
 
+def confirm_or_abort(prompt):
+    while True:
+        looks_good = input(prompt).lower()
+        if looks_good not in ('yes', 'no'):
+            print("Invalid input - please enter 'yes' or 'no'")
+            continue
+        elif looks_good == 'yes':
+            break
+        else:
+            LOGGER.error("Aborting due to user input")
+            exit(1)
+
 def main(client):
     start_date = get_date("\nWhat date did the failed requests begin (dd/mm/yy)?\n")
     end_date = get_date("\nWhat date did the failed requests end (dd/mm/yy)?\n", start_date)
@@ -86,18 +100,8 @@ def main(client):
             "desc"
         )
     )
-
-    while True:
-        looks_good = input(f"\nThere were {int(records_count)} failed requests between {start_datetime.strftime(DATETIME_FORMAT)} and "
-                f"{end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)\n").lower()
-        if looks_good not in ('yes', 'no'):
-            print("Invalid input - please enter 'yes' or 'no'")
-            continue
-        elif looks_good == 'yes':
-            break
-        else:
-            LOGGER.error("Aborting due to user input")
-            exit(1)
+    confirm_or_abort(f"\nThere were {int(records_count)} failed requests between {start_datetime.strftime(DATETIME_FORMAT)} "
+                f"and {end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)\n")
 
     return start_datetime, end_datetime
 

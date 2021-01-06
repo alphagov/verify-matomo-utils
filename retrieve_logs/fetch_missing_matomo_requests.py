@@ -161,9 +161,9 @@ def download_failed_requests(client, start_datetime, end_datetime):
             requests += extract_requests_from_response(response, period_start, period_end)
 
     total_written = write_requests_to_file(requests, output_filename)
-
     get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
 
+    return os.path.abspath(output_filename)
 
 if __name__ == '__main__':
     validate_environment_variables()
