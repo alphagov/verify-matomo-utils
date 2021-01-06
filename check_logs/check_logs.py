@@ -33,7 +33,7 @@ def get_date(prompt, start_date_to_compare=None):
             break
     return date
 
-def query_limits(start_date, end_date, sort_order):
+def query_limits(client, start_date, end_date, sort_order):
     return client.start_query(
         logGroupName = 'matomo',
         startTime=int(start_date.timestamp() * 1000),
@@ -42,7 +42,7 @@ def query_limits(start_date, end_date, sort_order):
         limit=RESULTS_LIMIT
     )['queryId']
 
-def return_date_and_records_count_from_completed_query(query_id):
+def return_date_and_records_count_from_completed_query(client, query_id):
     status = ''
     while status != 'Complete':
         time.sleep(1)
@@ -64,24 +64,42 @@ def return_date_and_records_count_from_completed_query(query_id):
         )
     ), response['statistics']['recordsMatched']
 
-start_date = get_date("\nWhat date did the failed requests begin (dd/mm/yy)?\n")
-end_date = get_date("\nWhat date did the failed requests end (dd/mm/yy)?\n", start_date)
+def main(client):
+    start_date = get_date("\nWhat date did the failed requests begin (dd/mm/yy)?\n")
+    end_date = get_date("\nWhat date did the failed requests end (dd/mm/yy)?\n", start_date)
 
-client = boto3.client('logs')
-start_datetime, records_count = return_date_and_records_count_from_completed_query(query_limits(start_date, end_date, "asc"))
-end_datetime, _ = return_date_and_records_count_from_completed_query(query_limits(start_date, end_date, "desc"))
+    start_datetime, records_count = return_date_and_records_count_from_completed_query(
+        client, 
+        query_limits(
+            client, 
+            start_date, 
+            end_date, 
+            "asc"
+        )
+    )
+    end_datetime, _ = return_date_and_records_count_from_completed_query(
+        client, 
+        query_limits(
+            client, 
+            start_date, 
+            end_date, 
+            "desc"
+        )
+    )
 
-while True:
-    looks_good = input(f"\nThere were {int(records_count)} failed requests between {start_datetime.strftime(DATETIME_FORMAT)} and "
-            f"{end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)\n").lower()
-    if looks_good not in ('yes', 'no'):
-        print("Invalid input - please enter 'yes' or 'no'")
-        continue
-    elif looks_good == 'yes':
-        break
-    else:
-        LOGGER.error("Aborting due to user input")
-        exit(1)
+    while True:
+        looks_good = input(f"\nThere were {int(records_count)} failed requests between {start_datetime.strftime(DATETIME_FORMAT)} and "
+                f"{end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)\n").lower()
+        if looks_good not in ('yes', 'no'):
+            print("Invalid input - please enter 'yes' or 'no'")
+            continue
+        elif looks_good == 'yes':
+            break
+        else:
+            LOGGER.error("Aborting due to user input")
+            exit(1)
 
-LOGGER.info("Downloading failed requets from cloudwatch. This may take a few minutes...")
-download_failed_requests(client, start_datetime - timedelta(seconds=1), end_datetime - timedelta(seconds=1))
+    return start_datetime, end_datetime
+
+if __name__ == 'main':
+    main(boto3.client('logs'))
