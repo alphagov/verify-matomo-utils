@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 
 import boto3
+from rich.console import Console
 
 from retrieve_logs.fetch_missing_matomo_requests import get_logger
 
@@ -10,6 +11,8 @@ LOGGER = get_logger()
 DATE_RANGE_FORMAT = '%Y-%m-%d'
 MAX_WAIT_SECONDS = 600
 client = boto3.client('ecs')
+c = Console(style='bold green')
+
 def get_matomo_container_instance_arn():
     all_container_instance_arns = client.list_container_instances(cluster='platform-web')['containerInstanceArns']
 
@@ -67,10 +70,6 @@ def pretty_print_command_response(command_response):
     stdout_content = command_response['StandardOutputContent']
     for line in stdout_content:
         if line[-1] != "\\n":
-            print(line, end='')
+            c.print(line, end='')
         else:
-            print(line[:-1])
-
-if __name__ == '__main__':
-    theday = datetime(2020, 11, 27)
-    main(theday, theday)
+            c.print(line[:-1])

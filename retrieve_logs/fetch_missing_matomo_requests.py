@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone, time as datetime_time
 from concurrent import futures
 
 import boto3
+from rich.logging import RichHandler
 
 LOG_LEVEL = 'LOG_LEVEL'
 NUM_OF_DAYS = 'NUM_OF_DAYS'
@@ -13,18 +14,20 @@ OUTPUT_FILENAME = 'OUTPUT_FILENAME'
 PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
 START_DATE = 'START_DATE'
 NUM_THREADS = int(os.getenv('NUM_THREADS', 8))
-
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
 MAX_REQUESTS = 10_000
-
 _logger = None
 
 
 def get_logger():
     global _logger
     if not _logger:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(
+                format="%(message)s", 
+                datefmt="[%X]", 
+                handlers=[RichHandler(rich_tracebacks=True)]
+            )
         _logger = logging.getLogger(__name__)
         _logger.setLevel(os.getenv(LOG_LEVEL, logging.INFO))
     return _logger
@@ -114,7 +117,7 @@ def run_query(client, start_timestamp, end_timestamp):
         try:
             status = response['status']
         except KeyError:
-            print(response.keys())
+            get_logger.exception(f"'status' not found in response: {respons.keys()}")
             raise
     return start_timestamp, end_timestamp, response
 

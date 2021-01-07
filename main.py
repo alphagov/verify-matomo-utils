@@ -13,29 +13,29 @@ if __name__ == '__main__':
     LOGGER = get_logger()
     client = boto3.client('logs')
 
-    LOGGER.info(">>> Starting check logs")
+    LOGGER.info("Starting check logs")
     start_datetime, end_datetime = check_logs(client)
-    LOGGER.info(">>> Finished check logs")
+    LOGGER.info("Finished check logs")
 
-    LOGGER.info(">>> Downloading failed requets from cloudwatch. This may take a few minutes...")
+    LOGGER.info("Downloading failed requets from cloudwatch. This may take a few minutes...")
     output_filename = download_failed_requests(
         client,
         start_datetime - timedelta(seconds=1),
         end_datetime + timedelta(seconds=1)
     )
-    LOGGER.info(">>> Downloading complete")
+    LOGGER.info("Downloading complete")
 
-    confirm_or_abort(f"\nYou should check the contents of {output_filename} and ensure the requests to be replayed "
+    confirm_or_abort(f"\nYou should check the contents of '{output_filename}' and ensure the requests to be replayed "
             f"are correct.\nOnce you've done this enter 'yes'. Or enter 'no' to abort.\n")
 
-    LOGGER.info(">>> Starting replay of events")
+    LOGGER.info("Starting replay of events")
     replay_events(output_filename)
-    LOGGER.info('>>> Finished replay of events')
+    LOGGER.info('Finished replay of events')
 
     confirm_or_abort("\nThe events must now archived. Do you want to proceed ('no' will abort)? (yes/no)\n")
-    LOGGER.info(">>> Starting archiving events")
+    LOGGER.info("Starting archiving events")
     archive_events(start_datetime, end_datetime)
-    LOGGER.info(">>> Finished archiving events")
+    LOGGER.info("Finished archiving events")
 
     exit(0)
 
