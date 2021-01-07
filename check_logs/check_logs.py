@@ -13,6 +13,7 @@ QUERY_STRING = """fields @message
     | filter @logStream like /matomo-nginx/
     | filter status >= 500
     | filter user_agent != 'ELB-HealthChecker/2.0'
+    | filter user_agent != 'Smokey Test'
     | filter path like /idsite=1/
     | filter path like /rec=1/
     """

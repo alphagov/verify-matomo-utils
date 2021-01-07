@@ -97,6 +97,7 @@ def run_query(client, start_timestamp, end_timestamp):
         | filter @logStream like /matomo-nginx/
         | filter status >= '500'
         | filter user_agent!='ELB-HealthChecker/2.0'
+        | filter user_agent!='Smokey Test'
         | filter path like /idsite=1/
         | filter path like /rec=1/""",
         limit=MAX_REQUESTS
@@ -132,7 +133,7 @@ def extract_requests_from_response(response, period_start, period_end):
 
 def write_requests_to_file(requests, output_filename):
     total_written = 0
-    with open(output_filename, 'a+') as f:
+    with open(f'/app/logs/{output_filename}', 'a+') as f:
         for request in sorted(requests, key=lambda request: re.findall(r'msec": "(.+?)"', request)[0]):
             total_written += 1
             f.write(request + '\n')

@@ -7,6 +7,7 @@ import boto3
 from check_logs.check_logs import main as check_logs, confirm_or_abort
 from retrieve_logs.fetch_missing_matomo_requests import get_logger, download_failed_requests
 from replay_events.replay import main as replay_events
+from archive_events.archive import main as archive_events
 
 if __name__ == '__main__':
     LOGGER = get_logger()
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     output_filename = download_failed_requests(
         client,
         start_datetime - timedelta(seconds=1),
-        end_datetime - timedelta(seconds=1)
+        end_datetime + timedelta(seconds=1)
     )
     LOGGER.info(">>> Downloading complete")
 
@@ -30,6 +31,13 @@ if __name__ == '__main__':
     LOGGER.info(">>> Starting replay of events")
     replay_events(output_filename)
     LOGGER.info('>>> Finished replay of events')
+
+    confirm_or_abort("\nThe events must now archived. Do you want to proceed ('no' will abort)? (yes/no)\n")
+    LOGGER.info(">>> Starting archiving events")
+    archive_events(start_datetime, end_datetime)
+    LOGGER.info(">>> Finished archiving events")
+
+    exit(0)
 
 
 
