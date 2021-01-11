@@ -1,14 +1,13 @@
 import os
-import logging
 import time
 import re
 from datetime import date, datetime, timedelta, timezone, time as datetime_time
 from concurrent import futures
 
 import boto3
-from rich.logging import RichHandler
 
-LOG_LEVEL = 'LOG_LEVEL'
+from helpers import get_logger
+
 NUM_OF_DAYS = 'NUM_OF_DAYS'
 OUTPUT_FILENAME = 'OUTPUT_FILENAME'
 PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
@@ -17,20 +16,6 @@ NUM_THREADS = int(os.getenv('NUM_THREADS', 8))
 DATE_FORMAT = '%Y-%m-%d'
 FILENAME_SUFFIX = '_matomo_requests.json'
 MAX_REQUESTS = 10_000
-_logger = None
-
-
-def get_logger():
-    global _logger
-    if not _logger:
-        logging.basicConfig(
-                format="%(message)s", 
-                datefmt="[%X]", 
-                handlers=[RichHandler(rich_tracebacks=True)]
-            )
-        _logger = logging.getLogger(__name__)
-        _logger.setLevel(os.getenv(LOG_LEVEL, logging.INFO))
-    return _logger
 
 
 def log_too_many_requests_and_exit(period_start, period_end):
@@ -89,6 +74,7 @@ def get_output_filename(start_datetime, end_datetime):
         return start_datetime.strftime(DATE_FORMAT) + '_' + end_datetime.strftime(DATE_FORMAT) + FILENAME_SUFFIX
     return filename
 
+
 def run_query(client, start_timestamp, end_timestamp):
     response =  client.start_query(
         logGroupName='matomo',
@@ -121,6 +107,7 @@ def run_query(client, start_timestamp, end_timestamp):
             raise
     return start_timestamp, end_timestamp, response
 
+
 def extract_requests_from_response(response, period_start, period_end):
     messages = []
     for message_list in response['results']:
@@ -134,6 +121,7 @@ def extract_requests_from_response(response, period_start, period_end):
 
     return messages
 
+
 def write_requests_to_file(requests, output_filename):
     total_written = 0
     with open(f'/app/logs/{output_filename}', 'a+') as f:
@@ -142,6 +130,7 @@ def write_requests_to_file(requests, output_filename):
             f.write(request + '\n')
 
     return total_written
+
 
 def download_failed_requests(client, start_datetime, end_datetime):
     period_width = get_period_width()

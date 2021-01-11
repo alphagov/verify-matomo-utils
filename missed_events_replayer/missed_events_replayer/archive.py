@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 import time
-from datetime import datetime
 
 import boto3
-from rich.console import Console
 
-from fetch_missing_matomo_requests import get_logger
+from helpers import console_print, get_logger
 
 LOGGER = get_logger()
 DATE_RANGE_FORMAT = '%Y-%m-%d'
 MAX_WAIT_SECONDS = 600
 client = boto3.client('ecs')
-c = Console(style='bold green')
+
 
 def get_matomo_container_instance_arn():
     all_container_instance_arns = client.list_container_instances(cluster='platform-web')['containerInstanceArns']
@@ -25,6 +23,7 @@ def get_matomo_container_instance_arn():
 
     LOGGER.error(f"No container instances found running Matomo. Instance IDs: f{all_container_instance_arns}")
     exit(1)
+
 
 def wait_and_return_succesful_command_response(ssm_client, command_id, ec2_instance_id):
     slept_time = 0
@@ -40,6 +39,7 @@ def wait_and_return_succesful_command_response(ssm_client, command_id, ec2_insta
         if slept_time == MAX_WAIT_SECONDS:
             LOGGER.error(f'Response not received within 10 seconds. Status: {command_response}')
             exit(1)
+
 
 def main(archive_start_date, archive_end_date):
     ec2_instance_id = client.describe_container_instances(
@@ -65,11 +65,12 @@ def main(archive_start_date, archive_end_date):
     command_response = wait_and_return_succesful_command_response(ssm_client, command_id, ec2_instance_id)
     pretty_print_command_response(command_response)
 
+
 def pretty_print_command_response(command_response):
     LOGGER.info('The following output is from the archiving task runnong on Matomo...\n')
     stdout_content = command_response['StandardOutputContent']
     for line in stdout_content:
         if line[-1] != "\\n":
-            c.print(line, end='')
+            console_print(line, end='')
         else:
-            c.print(line[:-1])
+            console_print(line[:-1])

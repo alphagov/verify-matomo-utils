@@ -1,44 +1,71 @@
 #!/usr/bin/env python
 import os
+import argparse
 from datetime import timedelta
 
 import boto3
 
-from check_logs import main as check_logs, confirm_or_abort
-from fetch_missing_matomo_requests import get_logger, download_failed_requests
+from helpers import get_date, get_output_filename, get_logger, confirm_or_abort
+from check_logs import main as check_logs
+from fetch_missing_matomo_requests import download_failed_requests
 from replay import main as replay_events
 from archive import main as archive_events
 
+
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+            "--start-with", 
+            choices=['check', 'fetch', 'replay', 'archive'], 
+            default='check',
+            help='the stage of replaying Matomo events you want to start with',
+        )
+    args = parser.parse_args()
+    starting_stage = {'check': 1, 'fetch': 2, 'replay': 3, 'archive': 4}[args.start_with]
+
     LOGGER = get_logger()
     client = boto3.client('logs')
 
-    LOGGER.info("Starting check logs")
-    start_datetime, end_datetime = check_logs(client)
-    LOGGER.info("Finished check logs")
+    LOGGER.info(f"Starting at the '{args.start_with}' stage.")
+    if starting_stage == 1:
+        LOGGER.info("Starting check logs")
+        start_datetime, end_datetime = check_logs(client)
+        LOGGER.info("Finished check logs")
 
-    LOGGER.info("Downloading failed requets from cloudwatch. This may take a few minutes...")
-    output_filename = download_failed_requests(
-        client,
-        start_datetime - timedelta(seconds=1),
-        end_datetime + timedelta(seconds=1)
-    )
-    LOGGER.info("Downloading complete")
+    if starting_stage <= 2:
+        LOGGER.info("Downloading failed requets from cloudwatch. This may take a few minutes...")
+        if starting_stage == 2:
+            start_datetime = get_date("What date did the failed requests begin? (dd/mm/yy)")
+            end_datetime = get_date("What date did the failed requests end? (dd/mm/yy)") + timedelta(1)
 
-    confirm_or_abort(f"\nYou should check the contents of '{os.getenv('HOST_WORKING_DIR') + '/' if os.getenv('HOST_WORKING_DIR') else ''}"
-            f"{output_filename}' and ensure the requests to be replayed are correct.\nOnce you've done this enter 'yes'. Or enter 'no' to abort.\n")
+        output_filename = download_failed_requests(
+            client,
+            start_datetime - timedelta(seconds=1),
+            end_datetime + timedelta(seconds=1)
+        )
+        LOGGER.info("Downloading complete")
 
-    LOGGER.info("Starting replay of events")
-    replay_events(output_filename)
-    LOGGER.info('Finished replay of events')
+        confirm_or_abort(
+                f"You should check the contents of '{os.getenv('HOST_WORKING_DIR') + '/' if os.getenv('HOST_WORKING_DIR') else ''}"
+                f"{output_filename}' and ensure the requests to be replayed are correct.\nOnce you've done this enter 'yes'. Or enter 'no' to abort."
+            )
 
-    confirm_or_abort("\nThe events must now archived. Do you want to proceed ('no' will abort)? (yes/no)\n")
-    LOGGER.info("Starting archiving events")
-    archive_events(start_datetime, end_datetime)
-    LOGGER.info("Finished archiving events")
+    if starting_stage <= 3:
+        LOGGER.info("Starting replay of events")
+        if starting_stage == 3:
+            output_filename = get_output_filename("Which file should events be imported from? It should be in the root directory of the app on the host machine.")
+        replay_events(output_filename)
+        LOGGER.info('Finished replay of events')
+
+        confirm_or_abort("\nThe events must now archived. Do you want to proceed ('no' will abort)? (yes/no)\n")
+
+    if starting_stage <= 4:
+        LOGGER.info("Starting archiving events")
+        if starting_stage == 4:
+            start_datetime = get_date("What date does archiving need to start from? (dd/mm/yy)")
+            end_datetime = get_date("What date does archiving need to finish? (dd/mm/yy)") + timedelta(1)
+        archive_events(start_datetime, end_datetime)
+        LOGGER.info("Finished archiving events")
 
     exit(0)
-
-
-
 

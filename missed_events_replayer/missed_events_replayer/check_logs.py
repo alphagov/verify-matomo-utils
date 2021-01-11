@@ -4,11 +4,10 @@ import re
 from datetime import datetime, timedelta
 
 import boto3
-from rich.console import Console
 
-from fetch_missing_matomo_requests import get_logger, download_failed_requests
+from fetch_missing_matomo_requests import download_failed_requests
+from helpers import get_date, confirm_or_abort, get_logger
 
-DATE_FORMAT = '%d/%m/%y'
 DATETIME_FORMAT = '%m/%d/%Y %H:%M:%S'
 QUERY_STRING = """fields @message
     | filter @logStream like /matomo-nginx/
@@ -18,25 +17,8 @@ QUERY_STRING = """fields @message
     | filter path like /rec=1/
     """
 RESULTS_LIMIT = 1
-ERROR_STYLE = 'bold white on red'
 LOGGER = get_logger()
-c = Console(style='bold green')
 
-def get_date(prompt, start_date_to_compare=None):
-    while True:
-        try:
-            date = datetime.strptime(c.input(prompt), DATE_FORMAT)
-        except ValueError:
-            c.print("Invalid date format - please enter a date as dd/mm/yy.", style=ERROR_STYLE)
-            continue
-        if date.date() > datetime.today().date():
-            c.print("Invalid date - please enter a date in the past or today.", style=ERROR_STYLE)
-            continue
-        elif start_date_to_compare and date.date() < start_date_to_compare.date():
-            c.print("Invalid date - please enter an end date the same or after the start date.", style=ERROR_STYLE)
-        else:
-            break
-    return date
 
 def query_limits(client, start_date, end_date, sort_order):
     return client.start_query(
@@ -46,6 +28,7 @@ def query_limits(client, start_date, end_date, sort_order):
         queryString=QUERY_STRING + f"| sort @timestamp {sort_order}",
         limit=RESULTS_LIMIT
     )['queryId']
+
 
 def return_date_and_records_count_from_completed_query(client, query_id):
     status = ''
@@ -69,21 +52,10 @@ def return_date_and_records_count_from_completed_query(client, query_id):
         )
     ), response['statistics']['recordsMatched']
 
-def confirm_or_abort(prompt):
-    while True:
-        looks_good = c.input(prompt).lower()
-        if looks_good not in ('yes', 'no'):
-            c.print("Invalid input - please enter 'yes' or 'no'", style=ERROR_STYLE)
-            continue
-        elif looks_good == 'yes':
-            break
-        else:
-            LOGGER.error("Aborting due to user input")
-            exit(1)
 
 def main(client):
-    start_date = get_date("\nWhat date did the failed requests begin (dd/mm/yy)?\n")
-    end_date = get_date("\nWhat date did the failed requests end (dd/mm/yy)?\n", start_date)
+    start_date = get_date("What date did the failed requests begin (dd/mm/yy)?")
+    end_date = get_date("What date did the failed requests end (dd/mm/yy)?", start_date)
 
     start_datetime, records_count = return_date_and_records_count_from_completed_query(
         client, 
@@ -103,10 +75,11 @@ def main(client):
             "desc"
         )
     )
-    confirm_or_abort(f"\nThere were {int(records_count)} failed requests between {start_datetime.strftime(DATETIME_FORMAT)} "
-                f"and {end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)\n")
+    confirm_or_abort(f"There were {int(records_count)} failed requests between {start_datetime.strftime(DATETIME_FORMAT)} "
+                f"and {end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)")
 
     return start_datetime, end_datetime
+
 
 if __name__ == 'main':
     main(boto3.client('logs'))

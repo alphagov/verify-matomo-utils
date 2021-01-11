@@ -11,5 +11,5 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-CMD [ "python", "-u", "missed_events_replayer/missed_events_replayer.py" ]
+ENTRYPOINT [ "python", "-u", "missed_events_replayer/missed_events_replayer.py" ]
 
