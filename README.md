@@ -10,6 +10,5 @@ More details about how to use them are included in other documentation.
 There is no context in this repo to keep it as generic as possible.
 (i.e. it shouldn't be exclusive to any individual Matomo setup.)
 
-- [`retrieve-logs`](./retrieve-logs) - downloads logs from AWS CloudWatch via Insights
-- [`replay-events`](./replay-events) - replays requests into Matomo from an Nginx access log
-  (or other compatible file format)
+- [`missed_events_replayer`](./missed_events_replayer) - downloads logs from AWS CloudWatch via Insights, replays the
+  requets into Matomo from the downloaded Nginx access logs and then archives them in Matomo. An interactive script.

@@ -1,6 +1,0 @@
-*
-!.gitignore
-!docker-entrypoint.sh
-!Dockerfile
-!README.md
-!replay.sh
