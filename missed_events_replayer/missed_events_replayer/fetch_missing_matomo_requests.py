@@ -124,6 +124,9 @@ def extract_requests_from_response(response, period_start, period_end):
 
 def write_requests_to_file(requests, output_filename):
     total_written = 0
+    if os.path.exists(f'/app/logs/{output_filename}'):
+        get_logger().info('Log file already exists - deleting before write')
+        os.remove(f'/app/logs/{output_filename}')
     with open(f'/app/logs/{output_filename}', 'a+') as f:
         for request in sorted(requests, key=lambda request: re.findall(r'msec": "(.+?)"', request)[0]):
             total_written += 1
@@ -135,13 +138,12 @@ def write_requests_to_file(requests, output_filename):
 def download_failed_requests(client, start_datetime, end_datetime):
     period_width = get_period_width()
     output_filename = get_output_filename(start_datetime, end_datetime)
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
 
     period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
     total_written = 0
     futures_list = []
     requests = []
+    get_logger().info(f'Using {NUM_THREADS} threads to download event logs.')
     with futures.ThreadPoolExecutor(NUM_THREADS) as executor:
         while period_start <= end_datetime:
             period_end = period_start + timedelta(seconds=period_width, microseconds=-1)
@@ -166,6 +168,5 @@ if __name__ == '__main__':
     start_datetime = get_start_datetime()
     num_of_days = get_number_of_days()
     end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
-
     download_failed_requests(client, start_datetime, end_datetime)
 

@@ -1,8 +1,7 @@
-#!/usr/bin/env python
 import subprocess
 from getpass import getpass
 
-from helpers import get_input, console_print, get_logger
+from helpers import get_input, console_print, get_logger, get_dry_run
 
 LOGGER = get_logger()
 
@@ -41,4 +40,3 @@ def main(events_log_file):
     while dry_run:
         dry_run = get_dry_run(dry_run)
         replay_events(dry_run, matomo_url, matomo_token, events_log_file)
-

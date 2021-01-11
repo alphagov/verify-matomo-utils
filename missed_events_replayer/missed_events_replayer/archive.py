@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import time
 
 import boto3
@@ -57,7 +56,7 @@ def main(archive_start_date, archive_end_date):
             Parameters={
                 'commands': [
                     "container_id=$(sudo docker ps | grep platform-deployer-verify-matomo | awk '{print $1}')",
-                    f'sudo docker exec -u www-data "$container_id" ./console core:archive --force-idsites="2" --force-date-range={date_range_string}'
+                    f'sudo docker exec -u www-data "$container_id" ./console core:archive --force-idsites="1" --force-date-range={date_range_string}'
                 ]
             },
         )['Command']['CommandId']

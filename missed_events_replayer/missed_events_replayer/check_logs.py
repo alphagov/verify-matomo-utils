@@ -1,9 +1,6 @@
-#!/usr/bin/env python
 import time
 import re
 from datetime import datetime, timedelta
-
-import boto3
 
 from fetch_missing_matomo_requests import download_failed_requests
 from helpers import get_date, confirm_or_abort, get_logger
@@ -79,7 +76,3 @@ def main(client):
                 f"and {end_datetime.strftime(DATETIME_FORMAT)}.\nIs this correct? (yes/no)")
 
     return start_datetime, end_datetime
-
-
-if __name__ == 'main':
-    main(boto3.client('logs'))
