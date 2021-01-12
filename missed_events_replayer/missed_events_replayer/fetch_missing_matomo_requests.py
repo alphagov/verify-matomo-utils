@@ -103,7 +103,7 @@ def run_query(client, start_timestamp, end_timestamp):
         try:
             status = response['status']
         except KeyError:
-            get_logger.exception(f"'status' not found in response: {respons.keys()}")
+            get_logger.exception(f"'status' not found in response: {response.keys()}")
             raise
     return start_timestamp, end_timestamp, response
 
@@ -169,4 +169,3 @@ if __name__ == '__main__':
     num_of_days = get_number_of_days()
     end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
     download_failed_requests(client, start_datetime, end_datetime)
-
