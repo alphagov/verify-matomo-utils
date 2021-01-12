@@ -35,7 +35,7 @@ def wait_and_return_succesful_command_response(ssm_client, command_id, ec2_insta
             )
         if command_response['Status'] == 'Success':
             return command_response
-        if slept_time == MAX_WAIT_SECONDS:
+        if slept_time >= MAX_WAIT_SECONDS:
             LOGGER.error(f'Response not received within 10 seconds. Status: {command_response}')
             exit(1)
 
