@@ -1,7 +1,0 @@
-*
-!.gitignore
-!.Dockerfile
-!fetch_missing_matomo_requests.py
-!README.md
-!requirements.txt
-!retrieve.sh
