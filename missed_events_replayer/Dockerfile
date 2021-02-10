@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apk add --no-cache python2 git
 
-RUN git clone --depth=1 https://github.com/adityapahuja/matomo-log-analytics.git log-analytics
+RUN git clone --depth=1 https://github.com/alphagov/matomo-log-analytics.git log-analytics
 
 COPY requirements.txt .
 
