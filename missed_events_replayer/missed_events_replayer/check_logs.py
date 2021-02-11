@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timedelta
 
 from fetch_missing_matomo_requests import download_failed_requests
-from helpers import get_date, confirm_or_abort, get_logger
+from helpers import get_date, confirm_or_abort, get_logger, console_print
 
 DATETIME_FORMAT = '%m/%d/%Y %H:%M:%S'
 QUERY_STRING = """fields @message
@@ -51,6 +51,7 @@ def return_date_and_records_count_from_completed_query(client, query_id):
 
 
 def main(client):
+    console_print("You can check failed requests with Grafana - grafana.tools.signin.service.gov.uk/d/NYxHTZqmz/matomo")
     start_date = get_date("What date did the failed requests begin (dd/mm/yy)?")
     end_date = get_date("What date did the failed requests end (dd/mm/yy)?", start_date)
 

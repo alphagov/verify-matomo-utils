@@ -50,7 +50,7 @@ if __name__ == '__main__':
         replay_events(output_filename)
         LOGGER.info('Finished replay of events')
 
-        confirm_or_abort("\nThe events must now archived. Do you want to proceed ('no' will abort)? (yes/no)\n")
+        confirm_or_abort("\nThe events must now be archived. Do you want to proceed ('no' will abort)? (yes/no)\n")
 
     if starting_stage_index <= 4:
         LOGGER.info("Starting archiving events")
