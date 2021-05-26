@@ -12,9 +12,10 @@ client = boto3.client('ecs')
 
 def get_matomo_container_instance_arn():
     all_container_instance_arns = client.list_container_instances(cluster='platform-web')['containerInstanceArns']
-
     for arn in all_container_instance_arns:
         task_arns = client.list_tasks(cluster='platform-web', containerInstance=arn)['taskArns']
+        if not task_arns:
+            continue
         task_defs = client.describe_tasks(cluster='platform-web', tasks=task_arns)['tasks']
         for task_def in task_defs:
             if any(container['name'] == 'matomo' for container in task_def['containers']):
