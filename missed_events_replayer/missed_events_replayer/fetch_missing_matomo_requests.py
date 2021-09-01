@@ -8,7 +8,6 @@ import boto3
 
 from helpers import get_logger
 
-NUM_OF_DAYS = 'NUM_OF_DAYS'
 OUTPUT_FILENAME = 'OUTPUT_FILENAME'
 PERIOD_WIDTH_IN_SECONDS = 'PERIOD_WIDTH_IN_SECONDS'
 START_DATE = 'START_DATE'
@@ -24,40 +23,6 @@ def log_too_many_requests_and_exit(period_start, period_end):
             + ' Some requests may not have been downloaded properly as a result.'
             + ' The period size should be decreased to ensure all requests are downloaded.')
     exit(1)
-
-
-def log_unset_env_variable_error_and_exit(environment_variable):
-    get_logger().error(f'{environment_variable} environment variable is not set.')
-    exit(1)
-
-
-def validate_environment_variables():
-    if os.getenv(START_DATE) is None:
-        log_unset_env_variable_error_and_exit(START_DATE)
-    if os.getenv(NUM_OF_DAYS) is None:
-        log_unset_env_variable_error_and_exit(NUM_OF_DAYS)
-
-
-def get_start_datetime():
-    try:
-        start_date_env = os.getenv(START_DATE)
-        if start_date_env == 'yesterday':
-            start_of_day = datetime.combine(date.today(), datetime_time())
-            return start_of_day - timedelta(days=1)
-        return datetime.strptime(start_date_env, DATE_FORMAT)
-    except ValueError:
-        get_logger().exception(
-                f'START_DATE has an invalid format. Please follow the format "{DATE_FORMAT}"'
-                + ' or use the keyword "yesterday".')
-        exit(1)
-
-
-def get_number_of_days():
-    try:
-        return int(os.getenv(NUM_OF_DAYS))
-    except ValueError:
-        get_logger().exception('NUM_OF_DAYS has an invalid format. Please specify an integer.')
-        exit(1)
 
 
 def get_period_width():
@@ -91,7 +56,7 @@ def run_query(client, start_timestamp, end_timestamp):
         | filter path like /rec=1/""",
         limit=MAX_REQUESTS
     )
-    queryId = response['queryId']
+    query_id = response['queryId']
     status = 'Running'
     seconds_slept = 0
     while status != 'Complete':
@@ -99,7 +64,7 @@ def run_query(client, start_timestamp, end_timestamp):
         seconds_slept += 1
         if seconds_slept % 30 == 0:
             get_logger().debug(f'Still waiting for a request. Spent {seconds_slept} seconds waiting so far.')
-        response = client.get_query_results(queryId=queryId)
+        response = client.get_query_results(queryId=query_id)
         try:
             status = response['status']
         except KeyError:
@@ -123,11 +88,12 @@ def extract_requests_from_response(response, period_start, period_end):
 
 
 def write_requests_to_file(requests, output_filename):
+    file_path = f'./{output_filename}'
     total_written = 0
-    if os.path.exists(f'/app/logs/{output_filename}'):
+    if os.path.isfile(file_path):
         get_logger().info('Log file already exists - deleting before write')
-        os.remove(f'/app/logs/{output_filename}')
-    with open(f'/app/logs/{output_filename}', 'a+') as f:
+        os.remove(file_path)
+    with open(file_path, 'a+') as f:
         for request in sorted(requests, key=lambda request: re.findall(r'msec": "(.+?)"', request)[0]):
             total_written += 1
             f.write(request + '\n')
@@ -140,7 +106,6 @@ def download_failed_requests(client, start_datetime, end_datetime):
     output_filename = get_output_filename(start_datetime, end_datetime)
 
     period_start = datetime.utcfromtimestamp(start_datetime.replace(tzinfo=timezone.utc).timestamp())
-    total_written = 0
     futures_list = []
     requests = []
     get_logger().info(f'Using {NUM_THREADS} threads to download event logs.')
@@ -159,13 +124,3 @@ def download_failed_requests(client, start_datetime, end_datetime):
     get_logger().info(f'Wrote {total_written} requests to file "{output_filename}".')
 
     return output_filename
-
-if __name__ == '__main__':
-    validate_environment_variables()
-
-    client = boto3.client('logs')
-
-    start_datetime = get_start_datetime()
-    num_of_days = get_number_of_days()
-    end_datetime = start_datetime + timedelta(days=num_of_days, microseconds=-1)
-    download_failed_requests(client, start_datetime, end_datetime)

@@ -11,4 +11,4 @@ There is no context in this repo to keep it as generic as possible.
 (i.e. it shouldn't be exclusive to any individual Matomo setup.)
 
 - [`missed_events_replayer`](./missed_events_replayer) - downloads logs from AWS CloudWatch via Insights, replays the
-  requets into Matomo from the downloaded Nginx access logs and then archives them in Matomo. An interactive script.
+  requests into Matomo from the downloaded Nginx access logs and then archives them in Matomo. An interactive script.

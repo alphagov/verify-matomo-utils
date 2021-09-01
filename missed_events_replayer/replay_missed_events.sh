@@ -8,7 +8,6 @@ export AWS_DEFAULT_REGION=eu-west-2
 docker build -t matomo-missed-events-replayer .
 
 docker run --rm \
-    --mount type=bind,source="$(pwd)",target=/app/logs \
     -e AWS_ACCESS_KEY_ID \
     -e AWS_SECRET_ACCESS_KEY \
     -e AWS_SESSION_TOKEN \
@@ -17,5 +16,6 @@ docker run --rm \
     -e OUTPUT_FILENAME \
     -e PERIOD_WIDTH_IN_SECONDS \
     -e NUM_THREADS \
-    -e HOST_WORKING_DIR=$(pwd) \
-    -it matomo-missed-events-replayer
+    -e MATOMO_URL \
+    -e MATOMO_API_TOKEN \
+    -it matomo-missed-events-replayer $@

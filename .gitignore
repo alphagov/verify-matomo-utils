@@ -1,3 +1,5 @@
 __pycache__/
 *.py[cod]
 *.json
+log-analytics
+.idea

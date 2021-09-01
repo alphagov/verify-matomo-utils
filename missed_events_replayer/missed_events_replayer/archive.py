@@ -6,7 +6,8 @@ from helpers import console_print, get_logger
 
 LOGGER = get_logger()
 DATE_RANGE_FORMAT = '%Y-%m-%d'
-MAX_WAIT_SECONDS = 18000
+MAX_WAIT_SECONDS = 172800
+SLEEP_TIME = 60
 client = boto3.client('ecs')
 
 
@@ -28,8 +29,8 @@ def get_matomo_container_instance_arn():
 def wait_and_return_successful_command_response(ssm_client, command_id, ec2_instance_id):
     slept_time = 0
     while True:
-        time.sleep(1)
-        slept_time += 1
+        time.sleep(SLEEP_TIME)
+        slept_time += SLEEP_TIME
         command_response = ssm_client.get_command_invocation(
                 CommandId=command_id, 
                 InstanceId=ec2_instance_id,
@@ -39,8 +40,7 @@ def wait_and_return_successful_command_response(ssm_client, command_id, ec2_inst
         if slept_time >= MAX_WAIT_SECONDS:
             LOGGER.error(f'Response not received within {MAX_WAIT_SECONDS // 60 // 60} hours. Status: {command_response}')
             exit(1)
-        if slept_time % 60 == 0:
-            LOGGER.info(f"Archiving has been running for {slept_time // 60} minutes. Current status: {command_response['Status']}")
+        LOGGER.info(f"Archiving has been running for {slept_time // 60} minutes. Current status: {command_response['Status']}")
 
 
 def main(archive_start_date, archive_end_date):
@@ -66,8 +66,8 @@ def main(archive_start_date, archive_end_date):
         )['Command']['CommandId']
 
     LOGGER.info(f"This may take some time to finish. The job will timeout after {MAX_WAIT_SECONDS // 60 // 60} hours.")
-    LOGGER.info("You can safely quit this script and the archiving will continue in the cloud if you'd rather not wait.")
-    LOGGER.info("The progress of the archiving can be found in the AWS tools account: https://eu-west-2.console.aws.amazon.com/systems-manager/run-command/executing-commands?region=eu-west-2")
+    LOGGER.info("The progress of the archiving can be found in the AWS tools account: "
+                "https://eu-west-2.console.aws.amazon.com/systems-manager/run-command/executing-commands")
     command_response = wait_and_return_successful_command_response(ssm_client, command_id, ec2_instance_id)
     pretty_print_command_response(command_response)
 
