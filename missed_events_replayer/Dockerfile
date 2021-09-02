@@ -5,6 +5,8 @@ WORKDIR /app
 
 RUN apk add --no-cache python2 git jq
 
+RUN pip install awscli
+
 RUN git clone --depth=1 https://github.com/alphagov/matomo-log-analytics.git log-analytics
 
 COPY requirements.txt .

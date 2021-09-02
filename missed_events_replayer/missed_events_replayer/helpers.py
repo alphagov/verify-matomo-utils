@@ -1,6 +1,5 @@
 import os
 import logging
-from datetime import datetime
 
 from rich.console import Console
 from rich.logging import RichHandler
