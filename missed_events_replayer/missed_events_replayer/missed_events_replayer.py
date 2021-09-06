@@ -50,8 +50,8 @@ if __name__ == '__main__':
     LOGGER.info('Finished replay of events')
 
     LOGGER.info("Starting archiving events")
-    archive_events(start_datetime, end_datetime)
-    LOGGER.info("Finished archiving events")
+    command_ids = archive_events(start_datetime, end_datetime)
+    LOGGER.info("Archiving command submitted")
 
-    exit(0)
+    print(command_ids)
 

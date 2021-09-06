@@ -1,13 +1,7 @@
 import os
 import logging
 
-from rich.console import Console
-from rich.logging import RichHandler
-
 LOG_LEVEL = 'LOG_LEVEL'
-DATE_FORMAT = '%d/%m/%y'
-ERROR_STYLE = 'bold white on red'
-CONSOLE = Console(style='bold green')
 MATOMO_URL = 'MATOMO_URL'
 MATOMO_API_TOKEN = 'MATOMO_API_TOKEN'
 LOGGER = None
@@ -31,12 +25,7 @@ def get_logger():
         logging.basicConfig(
                 format="%(message)s", 
                 datefmt="[%X]", 
-                handlers=[RichHandler(rich_tracebacks=True)]
             )
         LOGGER = logging.getLogger(__name__)
         LOGGER.setLevel(os.getenv(LOG_LEVEL, logging.INFO))
     return LOGGER
-
-
-def console_print(output, **kwargs):
-    CONSOLE.print(output, **kwargs)

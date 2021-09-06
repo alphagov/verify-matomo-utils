@@ -21,10 +21,6 @@ variables.
 MATOMO_URL=https://analytics.tools.signin.service.gov.uk/ MATOMO_API_TOKEN=<from blackbox> ./replay_missed_events.sh 2020-09-28T12:13:14Z 2020-09-28T13:14:15Z
 ```
 
-
-
-
-
 ### What the app does
 
 #### 1. Fetch the logs for missed events from CloudWatch

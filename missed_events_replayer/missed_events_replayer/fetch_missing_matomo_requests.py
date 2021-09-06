@@ -1,10 +1,8 @@
 import os
 import time
 import re
-from datetime import date, datetime, timedelta, timezone, time as datetime_time
+from datetime import datetime, timedelta, timezone
 from concurrent import futures
-
-import boto3
 
 from helpers import get_logger
 

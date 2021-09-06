@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 
 from helpers import get_logger, MATOMO_URL, MATOMO_API_TOKEN
 
@@ -20,7 +21,8 @@ def replay_events(events_log_file):
                 '--enable-reverse-dns',
                 f'./{events_log_file}'
             ],
-            check=True
+            check=True,
+            stdout=sys.stderr
         )
     except subprocess.CalledProcessError:
         get_logger().error("Failed to replay events")

@@ -28,6 +28,7 @@ resources:
 
 jobs:
   - name: replay-missed-events
+    serial: true
     plan:
       - get: matomo-500-alert
         trigger: true
@@ -38,6 +39,8 @@ jobs:
           platform: linux
           inputs:
             - name: matomo-500-alert
+          outputs:
+            - name: command-ids
           params:
             MATOMO_URL: https://analytics.tools.signin.service.gov.uk/
             MATOMO_API_TOKEN: ((ida_matomo_authentication_token))
@@ -50,7 +53,7 @@ jobs:
                             sts assume-role \
                             --role-arn arn:aws:iam::753415395406:role/accounts-deployer-role \
                             --role-session-name concourse \
-                            --duration 18000 \
+                            --duration 3600 \
                 )"
 
                 export AWS_ACCESS_KEY_ID="$(echo $creds    | jq -r .Credentials.AccessKeyId)"
@@ -61,4 +64,44 @@ jobs:
                 start_time=$(cat matomo-500-alert/grafana-alert | jq -r .start)
                 end_time=$(cat matomo-500-alert/grafana-alert | jq -r .end)
 
-                python -u /app/missed_events_replayer/missed_events_replayer.py "$start_time" "$end_time"
+                python -u /app/missed_events_replayer/missed_events_replayer.py "$start_time" "$end_time" > command-ids/command-ids
+      - task: check-archiving-status
+        timeout: 48h
+        image: verify-matomo-missed-events-replayer-image
+        config:
+          platform: linux
+          inputs:
+            - name: command-ids
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+
+                read command_id ec2_id < command-ids/command-ids
+                status='N/A'
+
+                while [ $status != 'Success' ]
+                do
+                  echo "Sleeping for 5 minutes"
+                  sleep 300
+
+                  creds="$(aws \
+                              sts assume-role \
+                              --role-arn arn:aws:iam::753415395406:role/accounts-deployer-role \
+                              --role-session-name concourse \
+                              --duration 3600 \
+                  )"
+
+                  export AWS_ACCESS_KEY_ID="$(echo $creds    | jq -r .Credentials.AccessKeyId)"
+                  export AWS_SECRET_ACCESS_KEY="$(echo $creds    | jq -r .Credentials.SecretAccessKey)"
+                  export AWS_SESSION_TOKEN="$(echo $creds | jq -r .Credentials.SessionToken)"
+                  export AWS_DEFAULT_REGION=eu-west-2
+
+                  status=$(python -u /app/missed_events_replayer/check_archiving_status.py "$command_id" "$ec2_id")
+
+                  if [ $status != 'Pending' -a $status != 'InProgress' -a $status != 'Delayed' -a $status != 'Success' ]; then
+                    # all other states are failure states
+                    exit 1
+                  fi
+                done
