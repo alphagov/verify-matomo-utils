@@ -1,8 +1,11 @@
-FROM python:3.9.1-alpine
+ARG base_image=python:3.9.1-alpine
+FROM ${base_image}
 
 WORKDIR /app
 
-RUN apk add --no-cache python2 git
+RUN apk add --no-cache python2 git jq
+
+RUN pip install awscli
 
 RUN git clone --depth=1 https://github.com/alphagov/matomo-log-analytics.git log-analytics
 
