@@ -1,5 +1,10 @@
 # verify-matomo-utils
 
+
+>**GOV.UK Verify has closed**
+>
+>This repository is out of date and has been archived
+
 Collection of tools used for interacting with Matomo (formerly called Piwik)
 
 ## What is here?
